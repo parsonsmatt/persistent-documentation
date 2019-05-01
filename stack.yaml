@@ -1,0 +1,4 @@
+resolver: lts-13.19
+extra-deps:
+- persistent-2.10.0
+- persistent-template-2.7.0
