@@ -26,9 +26,135 @@
 
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 
--- | This module contains code for documenting a set of `persistent` entity
--- definitions.
-module Database.Persist.Documentation where
+-- | This module contains code for documenting a set of @persistent@ entity
+-- definitions. All the library provides is a means to render a Markdown
+-- document with table and column documentation and comments. A further
+-- expansion could use the information here to generate PostgreSQL @COMMENT@s on
+-- the fields and tables too.
+--
+-- = Getting Started
+--
+-- You probably already have a @persistent@ entity definitions somewhere, and
+-- they probably look like this:
+--
+-- @
+-- 'share' ['mkPersist' 'sqlSettings'] ['persistUpperCase'|
+--   User
+--     firstName Text.Text
+--     active Bool
+--     deriving Show Eq Read Ord
+-- |]
+-- @
+--
+-- The 'persistUpperCase' QuasiQuoter parses the block of text and returns
+-- a value of type @['EntityDef']@. We need to get our hands on that
+-- definition so we can document it.
+--
+-- Due to GHC staging restrictions, we have to extract the QuasiQuoter (or
+-- file parser) into a separate module:
+--
+-- @
+-- module Entities where
+--
+-- entityDefs :: ['EntityDef']
+-- entityDefs = ['persistUpperCase'|
+--   User
+--     firstName Text.Text
+--     active    Bool
+--     deriving Show Eq Read Ord
+-- |]
+-- @
+--
+-- Now, we'll import that value, and use it with the Template Haskell
+-- function. We also need to use 'deriveShowFields' to derive instances of
+-- 'Show' for the 'EntityField's that are generated.
+--
+-- @
+-- 'share' ['mkPersist' 'sqlSettings', 'deriveShowFields'] entityDefs
+-- @
+--
+-- That's all the setup we need to start writing documentation for our
+-- entites.
+--
+-- = Documentating The Schema
+--
+-- Now, we're going to use the 'document' function to link up the
+-- @entityDefs@ with a documentation expression (type 'EntityDoc').
+--
+-- @
+-- docs :: ['EntityDef']
+-- docs = 'document' entityDefs (pure ())
+-- @
+--
+-- The 'EntityDoc' type is a monad, and we'll use @do@ notation to sequence
+-- multiple entity definitions.
+--
+-- @
+-- docs :: ['EntityDef']
+-- docs = 'document' entityDefs $ do
+--   User --^ do
+--     pure ()
+-- @
+--
+-- The '(--^)' operator mimics the Haddock comment syntax. We use the
+-- constructor of the entity (in this case, @User@). On the right, we
+-- provide documentation for the entity. The right hand expression will
+-- have the type 'FieldDoc', and we can use @do@ notation to construct it.
+--
+-- We can use string literals to document the entity itself, with the
+-- @OverloadedStrings@ extension enabled. The string literals are
+-- concatenated, and used to provide entity-level comments. You'll need to
+-- manage whitespace yourself, though.
+--
+-- @
+-- docs :: ['EntityDef']
+-- docs = 'document' entityDefs $ do
+--   User --^ do
+--     "This is user documentation. "
+--     "You can have multiple lines, but you need to watch out for spaces. "
+--     "The lines will be combined."
+-- @
+--
+-- We can also document the entity fields. We do this using the '(#)'
+-- operator.
+--
+-- @
+-- docs :: ['EntityDef']
+-- docs = 'document' entityDefs $ do
+--   User --^ do
+--     "This is user documentation. "
+--     "You can have multiple lines, but you need to watch out for spaces. "
+--     "The lines will be combined."
+--
+--     UserFirstName # "The user's first name."
+--     UserActive    # "Whether or not the user is able to log in."
+-- @
+--
+-- This attaches the comment to the entity field.
+--
+-- = Rendering the Documentation
+--
+-- Finally, we'll use 'render' and provide a 'Renderer' to generate
+-- documentation. For an example of what this looks like, check out the
+-- file @test/example.md@ in the repository (linked from the README).
+--
+-- @
+-- renderedDocs :: Text
+-- renderedDocs = 'render' 'markdownTableRenderer' docs
+-- @
+module Database.Persist.Documentation
+  ( -- * The Documentation DSL
+    document
+  , (--^)
+  , (#)
+  , EntityDoc
+  , FieldDoc
+  , deriveShowFields
+    -- * Rendering Documentation
+  , Renderer(..)
+  , render
+  , markdownTableRenderer
+  ) where
 
 import           Control.Monad.Writer
 import qualified Data.Char as Char
@@ -44,6 +170,7 @@ import           Language.Haskell.TH
 
 import Data.StrMap
 import Data.SemiMap
+import Database.Persist.Documentation.Internal
 
 -- | This function accepts a list of 'EntityDef' and an 'EntityDoc' block, and
 -- substitutes the 'entityComments' and 'fieldComments' from the
@@ -88,8 +215,8 @@ data Renderer rendered where
 -- | Given a 'Renderer' for a list of entity defintiions, render it.
 --
 -- @since 0.1.0.0
-abstractRender :: Renderer rendered -> [EntityDef] -> rendered
-abstractRender Renderer{..} =
+render :: Renderer rendered -> [EntityDef] -> rendered
+render Renderer{..} =
   renderEntities . map f
   where
     f ent = renderEntity ent entityDocs renderedFields
@@ -99,11 +226,56 @@ abstractRender Renderer{..} =
         renderedFields =
           renderFields (map (\f -> renderField f (fieldComments f)) fields)
 
--- | Render the '[EntityDef]' into a Markdown table representation.
+-- | A 'Renderer' that generates Markdown tables for an entity.
+--
+-- === __ Example __
+--
+-- Given 'entityDefs' like:
+--
+-- @
+-- entityDefs :: ['EntityDef']
+-- entityDefs = ['persistUpperCase'|
+--   User
+--     firstName Text.Text
+--     active Bool
+--     deriving Show Eq Read Ord
+-- |]
+-- @
+--
+-- and a doc block like:
+--
+-- @
+-- docs :: [EntityDef]
+-- docs = document entityDefs $ do
+--   User --^ do
+--     "you can use string literals to write documentation for the entity itself. "
+--     "The strings will be mappended together, so you'll need to handle "
+--     "whitespace yourself."
+--     UserFirstName # "The user's first name."
+--     UserActive # "Whether or not the user is able to log in."
+--     UserId # "You can document the user's ID field."
+-- @
+--
+-- This will rende the given Markdown output:
+--
+-- @
+-- # `User`
+--
+-- you can use string literals to write documentation for the entity itself. The strings will be
+-- mappended together, so you'll need to handle whitespace yourself.
+--
+-- * Primary ID: `id`
+--
+-- | Column name | Type | Description |
+-- |-|-|-|
+-- | `id` | integer (64) | You can document the user's ID field. |
+-- | `firstName` | string | The user's first name. |
+-- | `active` | boolean | Whether or not the user is able to log in. |
+-- @
 --
 -- @since 0.1.0.0
-toMarkdownTables :: [EntityDef] -> Text
-toMarkdownTables = abstractRender Renderer{..}
+markdownTableRenderer :: Renderer Text
+markdownTableRenderer = Renderer{..}
   where
    renderField FieldDef{..} mextra =
       fold
@@ -148,34 +320,12 @@ toMarkdownTables = abstractRender Renderer{..}
    showType SqlBool = "boolean"
    showType (SqlOther t) = t
 
--- | Given a list of 'FieldDef's, this associates each 'FieldDef' with the
--- additional documentation comment provided in the @'StrMap' ('SomeField' rec)
--- 'Text'@ for that entity, if any is present.
---
--- Precondition: The @['FieldDef']@ comes from the @'PersistEntity' rec@ that
--- this is called for. Doing eg:
---
--- @
--- alignFields
---   (entityFields (entityDef (Proxy :: Proxy User)))
---   (strMap :: StrMap (SomeField Order) Text)
--- @
---
--- will be extremely weird.
+-- | Render the '[EntityDef]' into a Markdown table representation. See
+-- 'markdownTable
 --
 -- @since 0.1.0.0
-alignFields
-  :: forall rec. RC rec
-  => [FieldDef] -> StrMap (SomeField rec) Text -> [FieldDef]
-alignFields fields strMap =
-  map findFieldDoc fields
-  where
-    findFieldDoc fld@FieldDef{..} =
-      case Map.lookup (nameAsText fieldHaskell) haskellNames of
-        Nothing -> fld
-        Just c -> fld { fieldComments = Just c }
-    haskellNames = asHaskellNames strMap
-    nameAsText = lowercaseFirstChar . unHaskellName
+toMarkdownTables :: [EntityDef] -> Text
+toMarkdownTables = render markdownTableRenderer
 
 -- | Formats the @'SomeField' rec@ in the keys of the 'Map' to be formatted in
 -- the same way as the 'HaskellName' present in a 'FieldDef'.
@@ -190,123 +340,11 @@ asHaskellNames (StrMap extraDocMap) =
     recName =
       show (typeRep (Proxy @rec))
 
--- | A type for defining documentation for a schema.
---
--- @since 0.1.0.0
-newtype EntityDoc' a = ED (Writer SchemaDocs a)
-  deriving (Functor, Applicative, Monad, MonadWriter SchemaDocs)
-
--- | The 'SchemaDocs' maps a 'TypeRep' of the @'Entity' rec@ that is documented
--- to the 'SomeDocs' for that entity.
---
--- @since 0.1.0.0
-type SchemaDocs = SemiMap TypeRep SomeDocs
-
--- | A wrapper around 'EntityDocs' that allows them to be stored in a list
--- together. Contains the 'RC' constraint alias, which will ensure that all
--- necessary constraints for document rendering are packaged in.
-data SomeDocs where
-  SomeDocs :: RC rec => EntityDocs rec -> SomeDocs
-
-instance Semigroup SomeDocs where
-  SomeDocs (r0 :: EntityDocs r0) <> SomeDocs (r1 :: EntityDocs r1) =
-    case eqT @r0 @r1 of
-      Just Refl -> SomeDocs (r0 <> r1)
-      Nothing -> SomeDocs r0
-
--- | Expand this constraint synonym to pack necessary constraints in with the
--- 'EntityDocs' type. Used in a few places to ensure that constraints are easy to
--- modify in one place.
---
--- @since 0.1.0.0
-type RC rec = (Typeable rec)
-
--- | 'EntityDocs' contain the documentation comment for the @'Entity' rec@ that
--- is being documented, as well as a map of documentation for the fields of that
--- entity.
---
--- @since 0.1.0.0
-data EntityDocs rec = EntityDocs
-  { entityDocumentation :: Text
-  , fieldDocumentation :: StrMap (SomeField rec) Text
-  }
-
-instance Semigroup (EntityDocs rec) where
-  EntityDocs d0 f0 <> EntityDocs d1 f1 = EntityDocs (d0 <> d1) (f0 <> f1)
-
-instance Monoid (EntityDocs rec) where
-  mempty = EntityDocs mempty mempty
-
-type EntityDoc = EntityDoc' ()
-type FieldDoc s = FieldDoc' s ()
-
--- | Wrap the result type of a 'EntityField' value so it can be stored in
--- homogenous containers.
-data SomeField rec where
-  SomeField :: FC rec typ => EntityField rec typ -> SomeField rec
-
--- | We need this instance so we can store 'SomeField' values in the 'StrMap'.
--- The quantified constraint ensures that we can show the underlying field. The
--- 'deriveShowFields' function defined later ensures that this is defined for
--- records in the schema.
-instance (forall typ. Show (EntityField rec typ)) => Show (SomeField rec) where
-  show (SomeField fld) = show fld
-
--- | Expand this constraint synonym to pack necessary constraints for packing
--- 'EntityField' values into 'SomeField's.
-type FC rec typ = forall x. Show (EntityField rec x)
-
--- | A monad for writing documentation on an entity's fields.
-newtype FieldDoc' rec a = FD (Writer (EntityDocs rec) a)
-  deriving (Functor, Applicative, Monad, MonadWriter (EntityDocs rec))
-
--- | Define documentation for an entity. Looks like this:
---
--- @
--- x :: EntityDoc
--- x = do
---   User ^-- do
---     "This comment is for the entity User."
---     UserName # "This comment is for a field.""
--- @
-(^--)
-  :: forall a r. (KnowResult a ~ r, Typeable r, RC r)
-  => a
-  -- ^ A constructor for the @'Entity' r@ you want to document.
-  -> FieldDoc r
-  -- ^ A block that contains documentation for the @'Entity' r@.
-  -> EntityDoc
-_ ^-- FD fieldDocs =
-  tell
-  . SemiMap
-  $ Map.singleton
-    (typeRep (Proxy @r))
-    (SomeDocs (execWriter fieldDocs))
-
--- | Write documentation for the given 'EntityField'.
-(#) :: FC rec typ => EntityField rec typ -> Text -> FieldDoc rec
-field # txt = tell mempty { fieldDocumentation = single field txt }
-
-single
-  :: FC rec typ
-  => EntityField rec typ -> Text -> StrMap (SomeField rec) Text
-single k t = insert (SomeField k) t mempty
-
-type family KnowResult a where
-  KnowResult (i -> o) = KnowResult o
-  KnowResult a = a
-
-instance (a ~ ()) => IsString (FieldDoc' s a) where
-  fromString str = tell mempty { entityDocumentation = Text.pack str }
-
 -- | Given a list of entity definitions, derives `Show` for all their fields.
 -- This is necessary for using this library for internal reasons, unfortunately.
+--
+-- @since 0.1.0.0
 deriveShowFields :: [EntityDef] -> Q [Dec]
 deriveShowFields defs = fmap join . forM defs $ \def -> do
   let name = conT . mkName . Text.unpack . unHaskellName . entityHaskell $ def
   [d|deriving instance Show (EntityField $(name) x)|]
-
-lowercaseFirstChar :: Text -> Text
-lowercaseFirstChar txt = case Text.uncons txt of
-  Just (c, r) -> Char.toLower c `Text.cons` r
-  Nothing -> ""

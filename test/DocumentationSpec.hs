@@ -15,6 +15,7 @@ import qualified Data.Char as Char
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
 import Data.Maybe
 import Data.Foldable
 import Test.Hspec
@@ -22,6 +23,7 @@ import Database.Persist.Sql
 import Database.Persist.TH
 
 import Database.Persist.Documentation
+import Database.Persist.Documentation.Internal (alignFields, single, asHaskellNames)
 import Data.StrMap
 import Entities
 
@@ -29,7 +31,7 @@ share [mkPersist sqlSettings, deriveShowFields] entityDefs
 
 docs :: [EntityDef]
 docs = document entityDefs $ do
-  User ^-- do
+  User --^ do
     "you can use string literals to write documentation for the entity itself. "
     "The strings will be mappended together, so you'll need to handle "
     "whitespace yourself."
@@ -39,6 +41,7 @@ docs = document entityDefs $ do
 
 spec :: Spec
 spec = do
+  runIO $ Text.writeFile "test/example.md" $ render markdownTableRenderer docs
   describe "Example Documentation" $ do
     it "has documentation for ID field" $ do
       fieldComments (entityId (head docs))
