@@ -22,7 +22,7 @@ library
     Data.SemiMap
   -- other-modules:
   build-depends:       
-      base       >= 4.9  && < 5.0
+      base       >= 4.12 && < 5.0
     , containers
     , persistent >= 2.10 && < 3.0
     , text
