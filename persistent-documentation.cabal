@@ -51,8 +51,7 @@ test-suite spec
     , hspec-discover
     , persistent
     , persistent-documentation
-    , persistent-template >= 2.7
+    , persistent-template >= 2.7.1
     , text
   other-modules:
     DocumentationSpec 
-    Entities

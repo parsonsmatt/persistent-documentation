@@ -144,7 +144,6 @@ module Database.Persist.Documentation
   , EntityDoc
   , FieldDoc
   , deriveShowFields
-  , mkEntityDefList
     -- * Rendering Documentation
   , Renderer(..)
   , render
@@ -343,33 +342,3 @@ deriveShowFields :: [EntityDef] -> Q [Dec]
 deriveShowFields defs = fmap join . forM defs $ \def -> do
   let name = conT . mkName . Text.unpack . unHaskellName . entityHaskell $ def
   [d|deriving instance Show (EntityField $(name) x)|]
-
--- | Creates a declaration for the @['EntityDef']@ from the @persistent@
--- schema. This is necessary because the Persistent QuasiQuoter is unable
--- to know the correct type of ID fields, and assumes that they are all
--- Int64.
---
--- Provide this in the list you give to 'share', much like @'mkMigrate'@.
---
--- @
--- 'share' ['mkMigrate' "migrateAll", 'mkEntityDefList' "entityDefs"] [...]
--- @
---
--- @since 0.1.1.0
-mkEntityDefList
-  :: String
-  -- ^ The name that will be given to the 'EntityDef' list.
-  -> [EntityDef]
-  -> Q [Dec]
-mkEntityDefList entityList entityDefs = do
-  let entityListName = mkName entityList
-  edefs <- ListE <$> traverse f entityDefs
-  typ <- [t|[EntityDef]|]
-  pure
-    [ SigD entityListName typ
-    , ValD (VarP entityListName) (NormalB edefs) []
-    ]
-  where
-    f EntityDef { entityHaskell = HaskellName haskellName } = do
-      let entityType = conT (mkName (Text.unpack haskellName))
-       in [|entityDef (Proxy :: Proxy $(entityType))|]
