@@ -41,23 +41,21 @@
 -- 'share' ['mkPersist' 'sqlSettings'] ['persistUpperCase'|
 --   User
 --     firstName Text.Text
---     active Bool
+--     active    Bool
 --     deriving Show Eq Read Ord
 -- |]
 -- @
 --
 -- The 'persistUpperCase' QuasiQuoter parses the block of text and returns
 -- a value of type @['EntityDef']@. We need to get our hands on that
--- definition so we can document it.
---
--- Due to GHC staging restrictions, we have to extract the QuasiQuoter (or
--- file parser) into a separate module:
+-- definition so we can document it. We'll use the 'mkEntityDefList'
+-- function to expose it:
 --
 -- @
--- module Entities where
---
--- entityDefs :: ['EntityDef']
--- entityDefs = ['persistUpperCase'|
+-- 'share'
+--   [ 'mkPersist' 'sqlSettings'
+--   , 'mkEntityDefList' "entityDefs"
+--   ] ['persistUpperCase'|
 --   User
 --     firstName Text.Text
 --     active    Bool
@@ -65,16 +63,11 @@
 -- |]
 -- @
 --
--- Now, we'll import that value, and use it with the Template Haskell
--- function. We also need to use 'deriveShowFields' to derive instances of
--- 'Show' for the 'EntityField's that are generated.
---
--- @
--- 'share' ['mkPersist' 'sqlSettings', 'deriveShowFields'] entityDefs
--- @
---
--- That's all the setup we need to start writing documentation for our
--- entites.
+-- You may want to factor out the quasiquoter into a term and import from
+-- another module. This has an important downside: the ID fields from the
+-- QuasiQuoter are given as 'Int64' regardless of what they actually are.
+-- It's not possible for the persistent quasiquoter to properly know the
+-- types of the IDs.
 --
 -- = Documentating The Schema
 --
@@ -83,7 +76,8 @@
 --
 -- @
 -- docs :: ['EntityDef']
--- docs = 'document' entityDefs (pure ())
+-- docs = 'document' entityDefs $ do
+--   pure ()
 -- @
 --
 -- The 'EntityDoc' type is a monad, and we'll use @do@ notation to sequence
@@ -92,11 +86,11 @@
 -- @
 -- docs :: ['EntityDef']
 -- docs = 'document' entityDefs $ do
---   User --^ do
+--   User '--^' do
 --     pure ()
 -- @
 --
--- The '(--^)' operator mimics the Haddock comment syntax. We use the
+-- The '--^' operator mimics the Haddock comment syntax. We use the
 -- constructor of the entity (in this case, @User@). On the right, we
 -- provide documentation for the entity. The right hand expression will
 -- have the type 'FieldDoc', and we can use @do@ notation to construct it.
@@ -109,25 +103,25 @@
 -- @
 -- docs :: ['EntityDef']
 -- docs = 'document' entityDefs $ do
---   User --^ do
+--   User '--^' do
 --     "This is user documentation. "
 --     "You can have multiple lines, but you need to watch out for spaces. "
 --     "The lines will be combined."
 -- @
 --
--- We can also document the entity fields. We do this using the '(#)'
+-- We can also document the entity fields. We do this using the '#'
 -- operator.
 --
 -- @
 -- docs :: ['EntityDef']
 -- docs = 'document' entityDefs $ do
---   User --^ do
+--   User '--^' do
 --     "This is user documentation. "
 --     "You can have multiple lines, but you need to watch out for spaces. "
 --     "The lines will be combined."
 --
---     UserFirstName # "The user's first name."
---     UserActive    # "Whether or not the user is able to log in."
+--     UserFirstName '#' "The user's first name."
+--     UserActive    '#' "Whether or not the user is able to log in."
 -- @
 --
 -- This attaches the comment to the entity field.
@@ -157,20 +151,20 @@ module Database.Persist.Documentation
   ) where
 
 import           Control.Monad.Writer
-import qualified Data.Char as Char
-import           Data.Foldable        (fold)
-import           Data.Map             (Map)
-import qualified Data.Map             as Map
+import qualified Data.Char                               as Char
+import           Data.Foldable                           (fold)
+import           Data.Map                                (Map)
+import qualified Data.Map                                as Map
 import           Data.String
-import           Data.Text            (Text)
-import qualified Data.Text            as Text
+import           Data.Text                               (Text)
+import qualified Data.Text                               as Text
 import           Data.Typeable
-import           Database.Persist.Sql hiding (insert)
+import           Database.Persist.Sql                    hiding (insert)
 import           Language.Haskell.TH
 
-import Data.StrMap
-import Data.SemiMap
-import Database.Persist.Documentation.Internal
+import           Data.SemiMap
+import           Data.StrMap
+import           Database.Persist.Documentation.Internal
 
 -- | This function accepts a list of 'EntityDef' and an 'EntityDoc' block, and
 -- substitutes the 'entityComments' and 'fieldComments' from the
@@ -237,7 +231,7 @@ render Renderer{..} =
 -- entityDefs = ['persistUpperCase'|
 --   User
 --     firstName Text.Text
---     active Bool
+--     active    Bool
 --     deriving Show Eq Read Ord
 -- |]
 -- @
@@ -299,7 +293,7 @@ markdownTableRenderer = Renderer{..}
        [ "# `" <> unDBName entityDB <> "`"
        , case mdocs of
            Just entityDocs -> "\n" <> entityDocs <> "\n"
-           Nothing -> ""
+           Nothing         -> ""
        , "* Primary ID: `" <> unDBName (fieldDB entityId) <> "`"
        , ""
        ]
@@ -308,16 +302,16 @@ markdownTableRenderer = Renderer{..}
    renderEntities =
      Text.unlines
 
-   showType SqlString = "string"
-   showType SqlInt32 = "integer (32)"
-   showType SqlInt64 = "integer (64)"
-   showType SqlReal = "double"
+   showType SqlString    = "string"
+   showType SqlInt32     = "integer (32)"
+   showType SqlInt64     = "integer (64)"
+   showType SqlReal      = "double"
    showType SqlNumeric{} = "numeric"
-   showType SqlDay = "date"
-   showType SqlTime = "time"
-   showType SqlDayTime = "datetime"
-   showType SqlBlob = "blob"
-   showType SqlBool = "boolean"
+   showType SqlDay       = "date"
+   showType SqlTime      = "time"
+   showType SqlDayTime   = "datetime"
+   showType SqlBlob      = "blob"
+   showType SqlBool      = "boolean"
    showType (SqlOther t) = t
 
 -- | Render the '[EntityDef]' into a Markdown table representation. See

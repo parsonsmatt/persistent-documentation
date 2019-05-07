@@ -11,6 +11,8 @@
 
 module DocumentationSpec where
 
+import Data.Proxy
+import Control.Monad
 import qualified Data.Char as Char
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -25,9 +27,22 @@ import Database.Persist.TH
 import Database.Persist.Documentation
 import Database.Persist.Documentation.Internal (alignFields, single, asHaskellNames)
 import Data.StrMap
-import Entities
 
-share [mkPersist sqlSettings, deriveShowFields] entityDefs
+share [mkPersist sqlSettings, mkEntityDefList "entityDefs", deriveShowFields] [persistUpperCase|
+  User
+    firstName Text.Text
+    active Bool
+    deriving Show Eq Read Ord
+
+  Dog
+    Id Text.Text
+    toy Text.Text
+
+  UserDog
+    dog DogId
+    user UserId
+
+|]
 
 docs :: [EntityDef]
 docs = document entityDefs $ do
@@ -39,18 +54,37 @@ docs = document entityDefs $ do
     UserActive # "Whether or not the user is able to log in."
     UserId # "You can document the user's ID field."
 
+  UserDog --^ do
+    "Users can have many dogs, and dogs can have many users."
+    UserDogDog # "This should have type text."
+
 spec :: Spec
 spec = do
   runIO $ Text.writeFile "test/example.md" $ render markdownTableRenderer docs
+  let (userDoc : dogDog : userDogDoc : _) = docs
   describe "Example Documentation" $ do
     it "has documentation for ID field" $ do
-      fieldComments (entityId (head docs))
+      fieldComments (entityId userDoc)
         `shouldBe`
           Just "You can document the user's ID field."
-    it "has documentation for all fields" $ do
-      for_ docs $ \ed ->
-        for_ (entityFields ed) $ \f ->
-          fieldComments f `shouldSatisfy` isJust
+    it "has documentation for all User fields" $ do
+      for_ (entityFields userDoc) $ \f ->
+        fieldComments f `shouldSatisfy` isJust
+
+    describe "UserDogDog" $ do
+      let (userDogDog : userDogUser : _) = entityFields userDogDoc
+      it "has documentation" $ do
+        fieldComments userDogDog
+          `shouldBe`
+            Just "This should have type text."
+      it "has the right SQL Type" $ do
+        fieldSqlType userDogDog
+          `shouldBe`
+            sqlType (Proxy :: Proxy DogId)
+      it "has the appropriate reference" $ do
+        fieldReference userDogDog
+          `shouldBe`
+            ForeignRef (HaskellName "Dog") (FTTypeCon (Just "Text") "Text")
 
   describe "FieldDef" $ do
     let
