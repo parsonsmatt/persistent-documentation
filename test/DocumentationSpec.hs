@@ -1,4 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
