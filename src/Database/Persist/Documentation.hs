@@ -153,6 +153,7 @@ module Database.Persist.Documentation
 import           Control.Monad.Writer
 import qualified Data.Char                               as Char
 import           Data.Foldable                           (fold)
+import qualified Data.List.NonEmpty                      as NEL
 import           Data.Map                                (Map)
 import qualified Data.Map                                as Map
 import           Data.String
@@ -160,6 +161,8 @@ import           Data.Text                               (Text)
 import qualified Data.Text                               as Text
 import           Data.Typeable
 import           Database.Persist.Sql                    hiding (insert)
+import           Database.Persist.EntityDef.Internal     (EntityDef(..), EntityIdDef(..))
+import           Database.Persist.Quasi.Internal         (UnboundEntityDef(..))
 import           Language.Haskell.TH
 
 import           Data.SemiMap
@@ -176,16 +179,20 @@ document entities (ED docs) = fmap associate entities
   where
     schemaDocs = execWriter docs
     typeReps = Map.mapKeys show (unSemiMap schemaDocs)
+    toFieldDef entIdDef = case entIdDef of
+      EntityIdField f -> f
+      EntityIdNaturalKey ck -> head . NEL.toList $ compositeFields ck
+    -- ^ This is not correct, but leaving as current goal is to get everything compiling
     associate edef =
       let
-        tyStr = Text.unpack . unHaskellName . entityHaskell $ edef
+        tyStr = Text.unpack . unEntityNameHS . entityHaskell $ edef
        in
         case Map.lookup tyStr typeReps of
           Just (SomeDocs (EntityDocs e cs)) ->
             edef
               { entityComments = Just e
               , entityFields = alignFields (entityFields edef) cs
-              , entityId = head (alignFields [entityId edef] cs)
+              , entityId = EntityIdField $ head (alignFields [toFieldDef $ entityId edef] cs)
               }
           Nothing -> edef
 
@@ -215,7 +222,7 @@ render Renderer{..} =
   where
     f ent = renderEntity ent entityDocs renderedFields
       where
-        fields = entityId ent : entityFields ent
+        fields = getEntityFields ent
         entityDocs = entityComments ent
         renderedFields =
           renderFields (map (\f -> renderField f (fieldComments f)) fields)
@@ -274,7 +281,7 @@ markdownTableRenderer = Renderer{..}
    renderField FieldDef{..} mextra =
       fold
         [ "| `"
-        , unDBName fieldDB
+        , unFieldNameDB fieldDB
         , "` | "
         , showType fieldSqlType
         , " | "
@@ -290,14 +297,18 @@ markdownTableRenderer = Renderer{..}
 
    renderEntity EntityDef{..} mdocs fields =
      Text.unlines
-       [ "# `" <> unDBName entityDB <> "`"
+       [ "# `" <> unEntityNameDB entityDB <> "`"
        , case mdocs of
            Just entityDocs -> "\n" <> entityDocs <> "\n"
            Nothing         -> ""
-       , "* Primary ID: `" <> unDBName (fieldDB entityId) <> "`"
+       , "* Primary ID: `" <> entityIdToText entityId <> "`"
        , ""
        ]
      <> fields
+
+   entityIdToText entIdDef = case entIdDef of
+     EntityIdField f -> unFieldNameDB $ fieldDB f
+     EntityIdNaturalKey ck -> "(" <> Text.intercalate "," (map (unFieldNameDB . fieldDB) (NEL.toList $ compositeFields ck)) <> ")"
 
    renderEntities =
      Text.unlines
@@ -338,7 +349,7 @@ asHaskellNames (StrMap extraDocMap) =
 -- This is necessary for using this library for internal reasons, unfortunately.
 --
 -- @since 0.1.0.0
-deriveShowFields :: [EntityDef] -> Q [Dec]
+deriveShowFields :: [UnboundEntityDef] -> Q [Dec]
 deriveShowFields defs = fmap join . forM defs $ \def -> do
-  let name = conT . mkName . Text.unpack . unHaskellName . entityHaskell $ def
+  let name = conT . mkName . Text.unpack . unEntityNameHS . entityHaskell . unboundEntityDef $ def
   [d|deriving instance Show (EntityField $(name) x)|]
