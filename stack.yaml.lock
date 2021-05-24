@@ -5,12 +5,12 @@
 
 packages:
 - completed:
-    hackage: persistent-2.12.1.2@sha256:753066c657db44997c4ea5e5cb35501d06b74a425e05071cbcf9dbf10909aa70,5901
+    hackage: persistent-2.13.0.1@sha256:08a79866b9f19710109d7d7feee6b33087065041b3ffdb123380d723aa17b666,6232
     pantry-tree:
-      size: 2908
-      sha256: d644cc68959ff6883482685e080c9b8f6c2b61302483bb44b1d4b2079c61fb57
+      size: 5098
+      sha256: 5e537e8e3070cb463d2ae868d897f9adc29cb08d3790c59cb150af4e0885ff79
   original:
-    hackage: persistent-2.12.1.2
+    hackage: persistent-2.13.0.1
 - completed:
     hackage: persistent-template-2.12.0.0@sha256:7c68de6624ff83e14b674745e1c895dcf7c8676f6f24be131c89e2e4c2fa4510,1008
     pantry-tree:

@@ -193,6 +193,7 @@ document entities (ED docs) = fmap associate entities
               { entityComments = Just e
               , entityFields = alignFields (entityFields edef) cs
               , entityId =
+#if MIN_VERSION_persistent(2,13,0)
                   case getEntityIdField edef of
                      Nothing ->
                         entityId edef
@@ -200,6 +201,9 @@ document entities (ED docs) = fmap associate entities
                          -- this is safe because it's a `map`, under the
                          -- hood
                         head $ EntityIdField <$> alignFields [field] cs
+#else
+                  head $ alignFields [entityId edef] cs
+#endif
               }
           Nothing -> edef
 
@@ -311,11 +315,16 @@ markdownTableRenderer = Renderer{..}
        , pure $ case mdocs of
            Just entityDocs -> "\n" <> entityDocs <> "\n"
            Nothing         -> ""
-       , case getEntityIdField ed of
+       ,
+#if MIN_VERSION_persistent(2,13,0)
+         case getEntityIdField ed of
            Nothing ->
                []
            Just field ->
                pure $ "* Primary ID: `" <> unFieldNameDB (fieldDB field) <> "`"
+#else
+         pure $ "* Primary ID: `" <> unFieldNameDB (fieldDB entityId) <> "`"
+#endif
        , pure ""
        ])
      <> fields
