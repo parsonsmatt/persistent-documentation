@@ -178,7 +178,7 @@ document entities (ED docs) = fmap associate entities
     typeReps = Map.mapKeys show (unSemiMap schemaDocs)
     associate edef =
       let
-        tyStr = Text.unpack . unHaskellName . entityHaskell $ edef
+        tyStr = Text.unpack . unEntityNameHS . entityHaskell $ edef
        in
         case Map.lookup tyStr typeReps of
           Just (SomeDocs (EntityDocs e cs)) ->
@@ -274,7 +274,7 @@ markdownTableRenderer = Renderer{..}
    renderField FieldDef{..} mextra =
       fold
         [ "| `"
-        , unDBName fieldDB
+        , unFieldNameDB fieldDB
         , "` | "
         , showType fieldSqlType
         , " | "
@@ -290,11 +290,11 @@ markdownTableRenderer = Renderer{..}
 
    renderEntity EntityDef{..} mdocs fields =
      Text.unlines
-       [ "# `" <> unDBName entityDB <> "`"
+       [ "# `" <> unEntityNameDB entityDB <> "`"
        , case mdocs of
            Just entityDocs -> "\n" <> entityDocs <> "\n"
            Nothing         -> ""
-       , "* Primary ID: `" <> unDBName (fieldDB entityId) <> "`"
+       , "* Primary ID: `" <> unFieldNameDB (fieldDB entityId) <> "`"
        , ""
        ]
      <> fields
@@ -340,5 +340,5 @@ asHaskellNames (StrMap extraDocMap) =
 -- @since 0.1.0.0
 deriveShowFields :: [EntityDef] -> Q [Dec]
 deriveShowFields defs = fmap join . forM defs $ \def -> do
-  let name = conT . mkName . Text.unpack . unHaskellName . entityHaskell $ def
+  let name = conT . mkName . Text.unpack . unEntityNameHS . entityHaskell $ def
   [d|deriving instance Show (EntityField $(name) x)|]

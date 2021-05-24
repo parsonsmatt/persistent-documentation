@@ -79,14 +79,6 @@ spec = do
         fieldComments userDogDog
           `shouldBe`
             Just "This should have type text."
-      it "has the right SQL Type" $ do
-        fieldSqlType userDogDog
-          `shouldBe`
-            sqlType (Proxy :: Proxy DogId)
-      it "has the appropriate reference" $ do
-        fieldReference userDogDog
-          `shouldBe`
-            ForeignRef (HaskellName "Dog") (FTTypeCon (Just "Text") "Text")
 
   describe "FieldDef" $ do
     let
@@ -95,13 +87,13 @@ spec = do
     describe "fieldType" $ do
       it "does not have the entity prefix" $ do
         for_ fields $ \efield -> do
-          unHaskellName (fieldHaskell efield)
+          unFieldNameHS (fieldHaskell efield)
             `shouldSatisfy`
               (not . ("User" `Text.isPrefixOf`))
 
       it "has a lowercase first letter" $ do
         for_ fields $ \efield -> do
-          Text.unpack (Text.take 1 (unHaskellName (fieldHaskell efield)))
+          Text.unpack (Text.take 1 (unFieldNameHS (fieldHaskell efield)))
             `shouldSatisfy`
               (all Char.isLower)
 
@@ -135,4 +127,3 @@ spec = do
       Set.fromList (mapMaybe fieldComments (alignFields fields strMap))
         `shouldBe`
           Set.fromList ["Hello, world", "If the user is active", "user identity"]
-

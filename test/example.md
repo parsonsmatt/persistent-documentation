@@ -28,6 +28,6 @@ Users can have many dogs, and dogs can have many users.
 | Column name | Type | Description |
 |-|-|-|
 | `id` | integer (64) |  |
-| `dog` | string | This should have type text. |
+| `dog` | integer (64) | This should have type text. |
 | `user` | integer (64) |  |
 
