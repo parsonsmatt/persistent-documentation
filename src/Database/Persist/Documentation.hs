@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DeriveGeneric              #-}
@@ -152,7 +153,7 @@ module Database.Persist.Documentation
 
 import           Control.Monad.Writer
 import qualified Data.Char                               as Char
-import           Data.Foldable                           (fold)
+import           Data.Foldable                           (fold, toList)
 import           Data.Map                                (Map)
 import qualified Data.Map                                as Map
 import           Data.String
@@ -165,6 +166,12 @@ import           Language.Haskell.TH
 import           Data.SemiMap
 import           Data.StrMap
 import           Database.Persist.Documentation.Internal
+
+#if MIN_VERSION_persistent(2,13,0)
+import           Database.Persist.EntityDef.Internal
+import           Database.Persist.FieldDef.Internal
+import Database.Persist.Quasi.Internal
+#endif
 
 -- | This function accepts a list of 'EntityDef' and an 'EntityDoc' block, and
 -- substitutes the 'entityComments' and 'fieldComments' from the
@@ -185,7 +192,14 @@ document entities (ED docs) = fmap associate entities
             edef
               { entityComments = Just e
               , entityFields = alignFields (entityFields edef) cs
-              , entityId = head (alignFields [entityId edef] cs)
+              , entityId =
+                  case getEntityIdField edef of
+                     Nothing ->
+                        entityId edef
+                     Just field ->
+                         -- this is safe because it's a `map`, under the
+                         -- hood
+                        head $ EntityIdField <$> alignFields [field] cs
               }
           Nothing -> edef
 
@@ -215,7 +229,7 @@ render Renderer{..} =
   where
     f ent = renderEntity ent entityDocs renderedFields
       where
-        fields = entityId ent : entityFields ent
+        fields = toList $ keyAndEntityFields ent
         entityDocs = entityComments ent
         renderedFields =
           renderFields (map (\f -> renderField f (fieldComments f)) fields)
@@ -271,6 +285,7 @@ render Renderer{..} =
 markdownTableRenderer :: Renderer Text
 markdownTableRenderer = Renderer{..}
   where
+   renderField :: FieldDef -> Maybe Text -> Text
    renderField FieldDef{..} mextra =
       fold
         [ "| `"
@@ -282,23 +297,30 @@ markdownTableRenderer = Renderer{..}
         , " |"
         ]
 
+   renderFields :: [Text] -> Text
    renderFields xs =
      Text.unlines $
          "| Column name | Type | Description |"
        : "|-|-|-|"
        : xs
 
-   renderEntity EntityDef{..} mdocs fields =
-     Text.unlines
-       [ "# `" <> unEntityNameDB entityDB <> "`"
-       , case mdocs of
+   renderEntity :: EntityDef -> Maybe Text -> Text -> Text
+   renderEntity ed@EntityDef{..} mdocs fields =
+     Text.unlines (concat
+       [ pure $ "# `" <> unEntityNameDB entityDB <> "`"
+       , pure $ case mdocs of
            Just entityDocs -> "\n" <> entityDocs <> "\n"
            Nothing         -> ""
-       , "* Primary ID: `" <> unFieldNameDB (fieldDB entityId) <> "`"
-       , ""
-       ]
+       , case getEntityIdField ed of
+           Nothing ->
+               []
+           Just field ->
+               pure $ "* Primary ID: `" <> unFieldNameDB (fieldDB field) <> "`"
+       , pure ""
+       ])
      <> fields
 
+   renderEntities :: [Text] -> Text
    renderEntities =
      Text.unlines
 
@@ -338,7 +360,20 @@ asHaskellNames (StrMap extraDocMap) =
 -- This is necessary for using this library for internal reasons, unfortunately.
 --
 -- @since 0.1.0.0
-deriveShowFields :: [EntityDef] -> Q [Dec]
+deriveShowFields
+#if MIN_VERSION_persistent(2,13,0)
+    :: [UnboundEntityDef]
+#else
+    :: [EntityDef]
+#endif
+    -> Q [Dec]
 deriveShowFields defs = fmap join . forM defs $ \def -> do
-  let name = conT . mkName . Text.unpack . unEntityNameHS . entityHaskell $ def
+  let name = conT . mkName . Text.unpack . unEntityNameHS . unname $ def
   [d|deriving instance Show (EntityField $(name) x)|]
+  where
+    unname =
+#if MIN_VERSION_persistent(2,13,0)
+      getUnboundEntityNameHS
+#else
+      entityHaskell
+#endif
