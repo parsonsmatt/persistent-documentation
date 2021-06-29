@@ -20,7 +20,7 @@ jobs:
           - "9.0"
 
     env:
-      CONFIG: "--disable-optimizations --enable-tests --enable-benchmarks"
+      CONFIG: "--enable-tests --enable-benchmarks"
     steps:
       - uses: actions/checkout@v2
       - uses: haskell/actions/setup@v1
