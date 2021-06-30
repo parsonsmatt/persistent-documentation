@@ -1,7 +1,7 @@
 cabal-version:       >=1.10
 
 name:                persistent-documentation
-version:             0.1.0.2
+version:             0.1.0.3
 synopsis:            Documentation DSL for persistent entities
 description:         A convenient DSL that allows you to attach documentation to persistent database entities
 -- bug-reports:
