@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DataKinds #-}
@@ -29,6 +30,11 @@ import Database.Persist.TH
 import Database.Persist.Documentation
 import Database.Persist.Documentation.Internal (alignFields, single, asHaskellNames)
 import Data.StrMap
+
+#if MIN_VERSION_persistent(2,13,0)
+import Database.Persist.FieldDef.Internal
+import Database.Persist.EntityDef.Internal
+#endif
 
 share [mkPersist sqlSettings, mkEntityDefList "entityDefs", deriveShowFields] [persistUpperCase|
   User
@@ -66,7 +72,12 @@ spec = do
   let (userDoc : dogDog : userDogDoc : _) = docs
   describe "Example Documentation" $ do
     it "has documentation for ID field" $ do
+#if MIN_VERSION_persistent(2,13,0)
+      let Just idField = getEntityIdField userDoc
+      fieldComments idField
+#else
       fieldComments (entityId userDoc)
+#endif
         `shouldBe`
           Just "You can document the user's ID field."
     it "has documentation for all User fields" $ do
@@ -79,14 +90,6 @@ spec = do
         fieldComments userDogDog
           `shouldBe`
             Just "This should have type text."
-      it "has the right SQL Type" $ do
-        fieldSqlType userDogDog
-          `shouldBe`
-            sqlType (Proxy :: Proxy DogId)
-      it "has the appropriate reference" $ do
-        fieldReference userDogDog
-          `shouldBe`
-            ForeignRef (HaskellName "Dog") (FTTypeCon (Just "Text") "Text")
 
   describe "FieldDef" $ do
     let
@@ -95,13 +98,13 @@ spec = do
     describe "fieldType" $ do
       it "does not have the entity prefix" $ do
         for_ fields $ \efield -> do
-          unHaskellName (fieldHaskell efield)
+          unFieldNameHS (fieldHaskell efield)
             `shouldSatisfy`
               (not . ("User" `Text.isPrefixOf`))
 
       it "has a lowercase first letter" $ do
         for_ fields $ \efield -> do
-          Text.unpack (Text.take 1 (unHaskellName (fieldHaskell efield)))
+          Text.unpack (Text.take 1 (unFieldNameHS (fieldHaskell efield)))
             `shouldSatisfy`
               (all Char.isLower)
 
@@ -120,7 +123,7 @@ spec = do
   describe "alignFields" $ do
     let
       userDef = entityDef (Nothing :: Maybe User)
-      fields = entityId userDef : entityFields userDef
+      fields = toList $ keyAndEntityFields userDef
       strMap@(StrMap theMap) = mconcat
         [ single UserFirstName "Hello, world"
         , single UserActive "If the user is active"
@@ -135,4 +138,3 @@ spec = do
       Set.fromList (mapMaybe fieldComments (alignFields fields strMap))
         `shouldBe`
           Set.fromList ["Hello, world", "If the user is active", "user identity"]
-

@@ -72,7 +72,7 @@ alignFields fields strMap =
         Nothing -> fld
         Just c -> fld { fieldComments = Just c }
     haskellNames = asHaskellNames strMap
-    nameAsText = lowercaseFirstChar . unHaskellName
+    nameAsText = lowercaseFirstChar . unFieldNameHS
 
 -- | Formats the @'SomeField' rec@ in the keys of the 'Map' to be formatted in
 -- the same way as the 'HaskellName' present in a 'FieldDef'.
