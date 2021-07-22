@@ -353,10 +353,7 @@ markdownTableRenderer = Renderer{..}
        newlineToBr '\n' = "<br>"
        newlineToBr c = Text.singleton c
      in
-      case Text.unsnoc comment of
-        Nothing -> comment
-        Just (front, '\n') -> Text.concatMap newlineToBr front
-        Just _ -> Text.concatMap newlineToBr comment
+       Text.concatMap newlineToBr $ Text.strip comment
 
 -- | Render the '[EntityDef]' into a Markdown table representation. See
 -- 'markdownTable
