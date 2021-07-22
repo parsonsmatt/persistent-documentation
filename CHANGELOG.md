@@ -1,5 +1,9 @@
 # Revision history for persistent-documentation
 
+## 0.1.0.4
+
+* Replace newlines with line breaks in field comments as rendered by `markdownTableRenderer` [#9](https://github.com/lumihq/persistent-documentation/pull/9)
+
 ## 0.1.0.3
 
 * Support `persistent-2.12` and `persistent-2.13`. [#4](https://github.com/lumihq/persistent-documentation/pull/4)
