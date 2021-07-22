@@ -297,7 +297,7 @@ markdownTableRenderer = Renderer{..}
         , "` | "
         , showType fieldSqlType
         , " | "
-        , fold mextra
+        , fold $ fmap cleanComment mextra
         , " |"
         ]
 
@@ -344,6 +344,19 @@ markdownTableRenderer = Renderer{..}
    showType SqlBlob      = "blob"
    showType SqlBool      = "boolean"
    showType (SqlOther t) = t
+   
+   cleanComment :: Text -> Text
+   cleanComment comment =
+     let
+       -- Newline characters may be present in a comment. The need to be removed
+       -- to allow the markdown tables to render properly.
+       newlineToBr '\n' = "<br>"
+       newlineToBr c = Text.singleton c
+     in
+      case Text.unsnoc comment of
+        Nothing -> comment
+        Just (front, '\n') -> Text.concatMap newlineToBr front
+        Just _ -> Text.concatMap newlineToBr comment
 
 -- | Render the '[EntityDef]' into a Markdown table representation. See
 -- 'markdownTable
