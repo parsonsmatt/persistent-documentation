@@ -297,7 +297,7 @@ markdownTableRenderer = Renderer{..}
         , "` | "
         , showType fieldSqlType
         , " | "
-        , fold $ fmap cleanComment mextra
+        , foldMap cleanComment mextra
         , " |"
         ]
 
