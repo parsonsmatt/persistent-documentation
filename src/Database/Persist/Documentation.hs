@@ -151,6 +151,7 @@ module Database.Persist.Documentation
   , markdownTableRenderer
   ) where
 
+import           Control.Monad                           (forM, join)
 import           Control.Monad.Writer
 import qualified Data.Char                               as Char
 import           Data.Foldable                           (fold, toList)
