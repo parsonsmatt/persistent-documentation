@@ -14,11 +14,9 @@ jobs:
       matrix:
         cabal: ["3.4"]
         ghc:
-          - "8.6.5"
-          - "8.8.4"
-          - "8.10.3"
-          - "9.0"
-          - "9.6.2"
+          - "9.2"
+          - "9.4"
+          - "9.6"
 
     env:
       CONFIG: "--enable-tests --enable-benchmarks"
