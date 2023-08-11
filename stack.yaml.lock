@@ -3,31 +3,10 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages:
-- completed:
-    hackage: persistent-2.13.0.1@sha256:08a79866b9f19710109d7d7feee6b33087065041b3ffdb123380d723aa17b666,6232
-    pantry-tree:
-      size: 5098
-      sha256: 5e537e8e3070cb463d2ae868d897f9adc29cb08d3790c59cb150af4e0885ff79
-  original:
-    hackage: persistent-2.13.0.1
-- completed:
-    hackage: persistent-template-2.12.0.0@sha256:7c68de6624ff83e14b674745e1c895dcf7c8676f6f24be131c89e2e4c2fa4510,1008
-    pantry-tree:
-      size: 267
-      sha256: 6d31d8a3bde912d0c8b28d9d18caa77a5a7add42104d8bb109f7cd298f21a78f
-  original:
-    hackage: persistent-template-2.12.0.0
-- completed:
-    hackage: lift-type-0.1.0.1@sha256:6e38e49bf086fd2203346417d96ad2e6c300d8d8f41d222780abdccc7a4e451b,1106
-    pantry-tree:
-      size: 361
-      sha256: 9de4bdc6ce32b78c28b4bce75b5b2e488bf0f875a136ae269a02df804eb94a1a
-  original:
-    hackage: lift-type-0.1.0.1
+packages: []
 snapshots:
 - completed:
-    size: 524996
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/27.yaml
-    sha256: 7ea31a280c56bf36ff591a7397cc384d0dff622e7f9e4225b47d8980f019a0f0
-  original: lts-14.27
+    sha256: e9a8b93a3a227cb90589940c0247826f353c32ebf8bfcb14e1f7f1a7483b7fbb
+    size: 658024
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2023/8/11.yaml
+  original: nightly-2023-08-11
