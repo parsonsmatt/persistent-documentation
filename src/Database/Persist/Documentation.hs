@@ -157,6 +157,8 @@ import qualified Data.Char                               as Char
 import           Data.Foldable                           (fold, toList)
 import           Data.Map                                (Map)
 import qualified Data.Map                                as Map
+import qualified Data.List.NonEmpty                      as NEL
+import           Data.List.NonEmpty                      (NonEmpty (..))
 import           Data.String
 import           Data.Text                               (Text)
 import qualified Data.Text                               as Text
@@ -234,10 +236,29 @@ render Renderer{..} =
   where
     f ent = renderEntity ent entityDocs renderedFields
       where
-        fields = toList $ keyAndEntityFields ent
+        fields = toList $ keyAndEntityFieldsDatabase ent
         entityDocs = entityComments ent
         renderedFields =
           renderFields (map (\f -> renderField f (fieldComments f)) fields)
+
+-- | version of keyAndEntityFields which returns all fields until upstream isupdated
+keyAndEntityFieldsDatabase :: EntityDef -> NEL.NonEmpty FieldDef
+keyAndEntityFieldsDatabase ent =
+    case entityId ent of
+        EntityIdField fd ->
+            fd :| fields
+        EntityIdNaturalKey _ ->
+            case NEL.nonEmpty fields of
+                Nothing ->
+                    error $ mconcat
+                        [ "persistent internal guarantee failed: entity is "
+                        , "defined with an entityId = EntityIdNaturalKey, "
+                        , "but somehow doesn't have any entity fields."
+                        ]
+                Just xs ->
+                    xs
+  where
+    fields = entityFields ent
 
 -- | A 'Renderer' that generates Markdown tables for an entity.
 --
