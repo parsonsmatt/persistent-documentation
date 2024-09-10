@@ -1,5 +1,12 @@
 # Revision history for persistent-documentation
 
+## 0.1.0.5
+
+* [#12](https://github.com/parsonsmatt/persistent-documentation/pull/12)
+    * Make it build with GHC 9.6
+* [#10](https://github.com/parsonsmatt/persistent-documentation/pull/10)
+    * Fix build with mtl-2.3
+
 ## 0.1.0.4
 
 * Replace newlines with line breaks in field comments as rendered by `markdownTableRenderer` [#9](https://github.com/lumihq/persistent-documentation/pull/9)
