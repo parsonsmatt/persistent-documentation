@@ -12,11 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        cabal: ["3.4"]
+        cabal: 
+          - "latest"
         ghc:
-          - "9.2.8"
-          - "9.4.5"
-          - "9.6.2"
+          - "9.2"
+          - "9.4"
+          - "9.6"
+          - "9.8"
+          - "9.10"
 
     env:
       CONFIG: "--enable-tests --enable-benchmarks"
@@ -44,4 +47,3 @@ jobs:
       - run: cabal v2-haddock all $CONFIG
         continue-on-error: true
       - run: cabal v2-sdist all
-
