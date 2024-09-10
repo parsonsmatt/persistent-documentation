@@ -9,14 +9,14 @@ license:             Apache-2.0
 license-file:        LICENSE
 author:              parsonsmatt
 maintainer:          parsonsmatt@gmail.com
-copyright:           2019 Lumi
+copyright:           2019 Lumi, 2024 Matt Parsons
 category:            Database
 build-type:          Simple
 extra-source-files:  CHANGELOG.md, README.md
 
 source-repository head
   type: git
-  location: https://github.com/lumihq/persistent-documentation
+  location: https://github.com/parsonsmatt/persistent-documentation
 
 library
   exposed-modules:
