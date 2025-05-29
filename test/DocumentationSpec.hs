@@ -41,6 +41,8 @@ share [mkPersist sqlSettings, mkEntityDefList "entityDefs", deriveShowFields] [p
   User
     firstName Text.Text
     active Bool
+    -- | You can only write inline docs for MigrationOnly fields
+    sqlOnly Text.Text MigrationOnly
     deriving Show Eq Read Ord
 
   Dog
@@ -139,3 +141,18 @@ spec = do
       Set.fromList (mapMaybe fieldComments (alignFields fields strMap))
         `shouldBe`
           Set.fromList ["Hello, world", "If the user is active", "user identity"]
+
+  describe "render" $ do
+    let simpleFieldRenderer = Renderer
+          { renderField = \fd _ -> unFieldNameHS $ fieldHaskell fd
+          , renderFields = Text.unwords
+          , renderEntity = \ed _ fs -> unEntityNameHS (entityHaskell ed) <> ": " <> fs
+          , renderEntities = Text.unlines
+          }
+#if MIN_VERSION_persistent(2,15,1)
+    it "includes MigrationOnly fields" $ do
+      let userDef = entityDef (Nothing :: Maybe User)
+      let output = render simpleFieldRenderer [userDef]
+      output `shouldBe` "User: Id firstName active sqlOnly\n"
+#endif
+    pure ()

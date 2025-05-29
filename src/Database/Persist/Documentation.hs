@@ -225,7 +225,7 @@ data Renderer rendered where
        }
     -> Renderer rendered
 
--- | Given a 'Renderer' for a list of entity defintiions, render it.
+-- | Given a 'Renderer' for a list of entity definitions, render it.
 --
 -- @since 0.1.0.0
 render :: Renderer rendered -> [EntityDef] -> rendered
@@ -234,7 +234,12 @@ render Renderer{..} =
   where
     f ent = renderEntity ent entityDocs renderedFields
       where
-        fields = toList $ keyAndEntityFields ent
+        fields =
+#if MIN_VERSION_persistent(2,15,1)
+          toList $ keyAndEntityFieldsDatabase ent
+#else
+          toList $ keyAndEntityFields ent
+#endif
         entityDocs = entityComments ent
         renderedFields =
           renderFields (map (\f -> renderField f (fieldComments f)) fields)

@@ -9,6 +9,7 @@ you can use string literals to write documentation for the entity itself. The st
 | `id` | integer (64) | You can document the user's ID field. |
 | `firstName` | string | The user's first name. |
 | `active` | boolean | Whether or not the user is able to log in. |
+| `sqlOnly` | string | You can only write inline docs for MigrationOnly fields |
 
 # `Dog`
 
