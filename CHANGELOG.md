@@ -1,5 +1,10 @@
 # Revision history for persistent-documentation
 
+## 0.1.0.6
+
+* [#16](https://github.com/parsonsmatt/persistent-documentation/pull/16)
+    * Render `MigrationOnly` fields for `persistent >= 2.15.1.0`
+
 ## 0.1.0.5
 
 * [#12](https://github.com/parsonsmatt/persistent-documentation/pull/12)
